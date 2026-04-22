@@ -4,6 +4,32 @@ document.addEventListener("DOMContentLoaded", () => {
   const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
 
+  // Function to remove participant from activity
+  async function removeParticipant(activityName, email, deleteButton) {
+    try {
+      const response = await fetch(
+        `/activities/${encodeURIComponent(activityName)}/participants/${encodeURIComponent(email)}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (response.ok) {
+        // Remove the participant li from DOM
+        deleteButton.closest("li").remove();
+        
+        // Refresh activities to update spot counts
+        fetchActivities();
+      } else {
+        const result = await response.json();
+        alert(result.detail || "Failed to remove participant");
+      }
+    } catch (error) {
+      alert("Error removing participant");
+      console.error("Error:", error);
+    }
+  }
+
   // Function to fetch activities from API
   async function fetchActivities() {
     try {
@@ -19,7 +45,14 @@ document.addEventListener("DOMContentLoaded", () => {
         activityCard.className = "activity-card";
 
         const spotsLeft = details.max_participants - details.participants.length;
-        const participantsList = details.participants.map(p => `<li>${p}</li>`).join("");
+        const participantsList = details.participants.map(p => `
+          <li>
+            <span class="participant-email">${p}</span>
+            <button type="button" class="delete-participant" data-activity="${name}" data-email="${p}" title="Remove participant">
+              <span class="delete-icon">✕</span>
+            </button>
+          </li>
+        `).join("");
 
         activityCard.innerHTML = `
           <h4>${name}</h4>
@@ -33,6 +66,16 @@ document.addEventListener("DOMContentLoaded", () => {
             </ul>
           </div>
         `;
+
+        // Add event listeners to delete buttons
+        activityCard.querySelectorAll(".delete-participant").forEach(btn => {
+          btn.addEventListener("click", (e) => {
+            e.preventDefault();
+            const activity = btn.dataset.activity;
+            const email = btn.dataset.email;
+            removeParticipant(activity, email, btn);
+          });
+        });
 
         activitiesList.appendChild(activityCard);
 
